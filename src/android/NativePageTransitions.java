@@ -52,6 +52,9 @@ public class NativePageTransitions extends CordovaPlugin {
   // this plugin listens to page changes, so only kick in a transition when it was actually requested by the JS bridge
   private String lastCallbackID;
   private static boolean isCrosswalk;
+  // Set timeout for pending transitions
+  private int pendingTimeout;
+  private Timer pendingTimer;
 
   static {
     try {
@@ -108,6 +111,7 @@ public class NativePageTransitions extends CordovaPlugin {
 
     if ("executePendingTransition".equalsIgnoreCase(action)) {
       delay = 0;
+      pendingTimer.cancel();
       if ("slide".equalsIgnoreCase(_action)) {
         doSlideTransition();
       } else if ("fade".equalsIgnoreCase(_action)) {
@@ -136,6 +140,8 @@ public class NativePageTransitions extends CordovaPlugin {
       slidePixels = json.optInt("slidePixels");
       fixedPixelsTop = json.getInt("fixedPixelsTop");
       fixedPixelsBottom = json.getInt("fixedPixelsBottom");
+      pendingTimeout = json.getInt("pendingTimeout");
+
 
       cordova.getActivity().runOnUiThread(new Runnable() {
         @Override
@@ -178,6 +184,10 @@ public class NativePageTransitions extends CordovaPlugin {
           if (delay > -1) {
             doSlideTransition();
           } else {
+            pendingTimer = new Timer().schedule(new TimerTask() {
+              delay = 0;
+              doSlideTransition();
+            }, pendingTimeout);
             _callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK));
           }
         }
